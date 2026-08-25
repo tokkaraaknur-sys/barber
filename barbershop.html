@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ГРАНЬ — барбершоп</title>
+
+<style>
+  /* ===== 1. НАСТРОЙКИ ЦВЕТА И ШРИФТОВ =====
+     Тут собраны все "переменные" — если захочешь поменять
+     цвет акцента на весь сайт, меняешь только одну строку. */
+  :root{
+    --bg: #171512;        /* тёмный фон */
+    --bg-card: #211e1a;   /* фон карточек */
+    --accent: #c99a4a;    /* латунный/золотой акцент */
+    --text: #f3ede2;      /* основной текст */
+    --text-dim: #a89f8f;  /* приглушённый текст */
+    --line: #35312b;      /* тонкие линии-разделители */
+  }
+
+  * { box-sizing: border-box; }
+
+  body{
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Georgia', 'Times New Roman', serif;
+    line-height: 1.5;
+  }
+
+  header{
+    padding: 60px 20px 40px;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+  }
+
+  header h1{
+    font-size: 42px;
+    letter-spacing: 4px;
+    margin: 0 0 10px;
+  }
+
+  header p{
+    color: var(--text-dim);
+    font-family: Arial, sans-serif;
+    letter-spacing: 1px;
+  }
+
+  main{
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  section{ margin-bottom: 60px; }
+
+  h2{
+    font-size: 22px;
+    letter-spacing: 2px;
+    border-bottom: 1px solid var(--accent);
+    display: inline-block;
+    padding-bottom: 6px;
+    margin-bottom: 24px;
+  }
+
+  /* ===== Карточки услуг ===== */
+  .services{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .service-card{
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 20px;
+    cursor: pointer;
+    transition: border-color .2s;
+    font-family: Arial, sans-serif;
+  }
+
+  .service-card:hover{ border-color: var(--accent); }
+
+  .service-card.selected{
+    border-color: var(--accent);
+    background: #2a2419;
+  }
+
+  .service-card h3{
+    margin: 0 0 6px;
+    font-family: Georgia, serif;
+    font-size: 18px;
+  }
+
+  .service-card .price{
+    color: var(--accent);
+    font-weight: bold;
+  }
+
+  /* ===== Форма записи ===== */
+  form{
+    display: grid;
+    gap: 16px;
+    max-width: 420px;
+    font-family: Arial, sans-serif;
+  }
+
+  label{
+    font-size: 13px;
+    color: var(--text-dim);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  input, select{
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 15px;
+  }
+
+  input:focus, select:focus{
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  button{
+    background: var(--accent);
+    color: #171512;
+    border: none;
+    padding: 12px 20px;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+  }
+
+  button:hover{ opacity: .9; }
+
+  button:disabled{
+    background: var(--line);
+    color: var(--text-dim);
+    cursor: not-allowed;
+  }
+
+  .msg{
+    font-family: Arial, sans-serif;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-size: 14px;
+  }
+  .msg.ok{ background: #1e3320; color: #8fd39a; }
+  .msg.error{ background: #3a1e1e; color: #e19a9a; }
+
+  /* ===== Список записей (для владельца) ===== */
+  .bookings-list{
+    font-family: Arial, sans-serif;
+    display: grid;
+    gap: 10px;
+  }
+
+  .booking-item{
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 14px 16px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .booking-item span.tag{
+    color: var(--accent);
+  }
+
+  .booking-item button{
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .empty{
+    color: var(--text-dim);
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ГРАНЬ</h1>
+  <p>БАРБЕРШОП · ЗАПИСЬ ОНЛАЙН</p>
+</header>
+
+<main>
+
+  <!-- ===== Блок 1: выбор услуги ===== -->
+  <section>
+    <h2>Выберите услугу</h2>
+    <div class="services" id="services"></div>
+  </section>
+
+  <!-- ===== Блок 2: форма записи ===== -->
+  <section>
+    <h2>Ваши данные</h2>
+    <form id="bookingForm">
+      <div>
+        <label for="name">Имя</label>
+        <input type="text" id="name" required placeholder="Как к вам обращаться">
+      </div>
+      <div>
+        <label for="phone">Телефон</label>
+        <input type="tel" id="phone" required placeholder="+7 (___) ___-__-__">
+      </div>
+      <div>
+        <label for="date">Дата</label>
+        <input type="date" id="date" required>
+      </div>
+      <div>
+        <label for="time">Время</label>
+        <select id="time" required>
+          <option value="">Выберите время</option>
+          <!-- Список создаётся автоматически в JS ниже -->
+        </select>
+      </div>
+      <button type="submit" id="submitBtn">Записаться</button>
+      <div id="formMessage"></div>
+    </form>
+  </section>
+
+  <!-- ===== Блок 3: список записей (аналог "админки") ===== -->
+  <section>
+    <h2>Текущие записи</h2>
+    <p class="empty">В реальном сайте этот блок видел бы только владелец. Здесь он показан для наглядности — так вы видите, что бронирование действительно работает.</p>
+    <div class="bookings-list" id="bookingsList"></div>
+  </section>
+
+</main>
+
+<script>
+/* =========================================================
+   ВСЯ ЛОГИКА САЙТА — с подробными комментариями.
+   Идея: это фронтенд-демо. Данные хранятся в памяти браузера
+   (в переменной bookings), поэтому при перезагрузке страницы
+   они исчезнут. Как сделать по-настоящему — см. пояснение
+   в чате после кода.
+   ========================================================= */
+
+// --- 1. Список услуг: название, цена, длительность ---
+const services = [
+  { id: 'haircut',  name: 'Стрижка',           price: 3000, duration: 40 },
+  { id: 'beard',    name: 'Оформление бороды', price: 1500, duration: 20 },
+  { id: 'combo',    name: 'Стрижка + борода',  price: 4000, duration: 60 },
+  { id: 'kids',     name: 'Детская стрижка',   price: 2000, duration: 30 },
+];
+
+// Здесь будем хранить все записи (пока — просто в памяти)
+let bookings = [];
+
+// Какая услуга выбрана сейчас (id из массива services)
+let selectedServiceId = null;
+
+// --- 2. Рисуем карточки услуг на странице ---
+function renderServices() {
+  const container = document.getElementById('services');
+  container.innerHTML = ''; // очищаем перед перерисовкой
+
+  services.forEach(service => {
+    const card = document.createElement('div');
+    card.className = 'service-card';
+    if (service.id === selectedServiceId) {
+      card.classList.add('selected');
+    }
+
+    card.innerHTML = `
+      <h3>${service.name}</h3>
+      <div class="price">${service.price} ₸</div>
+      <div style="color: var(--text-dim); font-size:13px; margin-top:4px;">
+        ${service.duration} минут
+      </div>
+    `;
+
+    // При клике запоминаем, какая услуга выбрана, и перерисовываем
+    card.addEventListener('click', () => {
+      selectedServiceId = service.id;
+      renderServices();
+    });
+
+    container.appendChild(card);
+  });
+}
+
+// --- 3. Заполняем выпадающий список времени (с 10:00 до 20:00 каждые 30 мин) ---
+function fillTimeOptions() {
+  const select = document.getElementById('time');
+  for (let hour = 10; hour < 20; hour++) {
+    for (let minutes of ['00', '30']) {
+      const value = `${String(hour).padStart(2, '0')}:${minutes}`;
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      select.appendChild(option);
+    }
+  }
+}
+
+// --- 4. Отрисовка списка уже созданных записей ---
+function renderBookings() {
+  const list = document.getElementById('bookingsList');
+
+  if (bookings.length === 0) {
+    list.innerHTML = '<p class="empty">Пока нет ни одной записи.</p>';
+    return;
+  }
+
+  list.innerHTML = '';
+  bookings.forEach((booking, index) => {
+    const item = document.createElement('div');
+    item.className = 'booking-item';
+    item.innerHTML = `
+      <div>
+        <span class="tag">${booking.serviceName}</span>
+        — ${booking.name}, ${booking.phone}<br>
+        <span style="color: var(--text-dim); font-size:13px;">
+          ${booking.date} в ${booking.time}
+        </span>
+      </div>
+    `;
+
+    // Кнопка отмены записи
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Отменить';
+    cancelBtn.addEventListener('click', () => {
+      bookings.splice(index, 1); // удаляем запись из массива
+      renderBookings();
+    });
+
+    item.appendChild(cancelBtn);
+    list.appendChild(item);
+  });
+}
+
+// --- 5. Показ сообщения об успехе/ошибке под формой ---
+function showMessage(text, type) {
+  const box = document.getElementById('formMessage');
+  box.innerHTML = `<div class="msg ${type}">${text}</div>`;
+  setTimeout(() => { box.innerHTML = ''; }, 4000);
+}
+
+// --- 6. Проверка: не занято ли уже это время в эту дату ---
+function isSlotTaken(date, time) {
+  return bookings.some(b => b.date === date && b.time === time);
+}
+
+// --- 7. Обработка отправки формы ---
+document.getElementById('bookingForm').addEventListener('submit', function (e) {
+  e.preventDefault(); // не даём странице перезагрузиться (стандартное поведение формы)
+
+  const name  = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const date  = document.getElementById('date').value;
+  const time  = document.getElementById('time').value;
+
+  // Проверка: выбрана ли услуга
+  if (!selectedServiceId) {
+    showMessage('Сначала выберите услугу выше.', 'error');
+    return;
+  }
+
+  // Проверка: не занят ли слот
+  if (isSlotTaken(date, time)) {
+    showMessage('Это время уже занято, выберите другое.', 'error');
+    return;
+  }
+
+  const service = services.find(s => s.id === selectedServiceId);
+
+  // Добавляем новую запись в массив
+  bookings.push({
+    serviceName: service.name,
+    name,
+    phone,
+    date,
+    time
+  });
+
+  showMessage(`Готово! Вы записаны на ${service.name.toLowerCase()} ${date} в ${time}.`, 'ok');
+
+  // Сбрасываем форму и выбор услуги
+  this.reset();
+  selectedServiceId = null;
+  renderServices();
+  renderBookings();
+});
+
+// --- 8. Запускаем всё при загрузке страницы ---
+renderServices();
+fillTimeOptions();
+renderBookings();
+
+// Не даём выбрать прошедшую дату
+document.getElementById('date').min = new Date().toISOString().split('T')[0];
+
+</script>
+
+</body>
+</html>

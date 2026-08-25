@@ -6,9 +6,6 @@
 <title>ГРАНЬ — барбершоп</title>
 
 <style>
-  /* ===== 1. НАСТРОЙКИ ЦВЕТА И ШРИФТОВ =====
-     Тут собраны все "переменные" — если захочешь поменять
-     цвет акцента на весь сайт, меняешь только одну строку. */
   :root{
     --bg: #171512;        /* тёмный фон */
     --bg-card: #211e1a;   /* фон карточек */
@@ -204,14 +201,12 @@
 </header>
 
 <main>
-
-  <!-- ===== Блок 1: выбор услуги ===== -->
+  
   <section>
     <h2>Выберите услугу</h2>
     <div class="services" id="services"></div>
   </section>
 
-  <!-- ===== Блок 2: форма записи ===== -->
   <section>
     <h2>Ваши данные</h2>
     <form id="bookingForm">
@@ -231,7 +226,6 @@
         <label for="time">Время</label>
         <select id="time" required>
           <option value="">Выберите время</option>
-          <!-- Список создаётся автоматически в JS ниже -->
         </select>
       </div>
       <button type="submit" id="submitBtn">Записаться</button>
@@ -239,7 +233,6 @@
     </form>
   </section>
 
-  <!-- ===== Блок 3: список записей (аналог "админки") ===== -->
   <section>
     <h2>Текущие записи</h2>
     <p class="empty">В реальном сайте этот блок видел бы только владелец. Здесь он показан для наглядности — так вы видите, что бронирование действительно работает.</p>
@@ -249,15 +242,7 @@
 </main>
 
 <script>
-/* =========================================================
-   ВСЯ ЛОГИКА САЙТА — с подробными комментариями.
-   Идея: это фронтенд-демо. Данные хранятся в памяти браузера
-   (в переменной bookings), поэтому при перезагрузке страницы
-   они исчезнут. Как сделать по-настоящему — см. пояснение
-   в чате после кода.
-   ========================================================= */
 
-// --- 1. Список услуг: название, цена, длительность ---
 const services = [
   { id: 'haircut',  name: 'Стрижка',           price: 3000, duration: 40 },
   { id: 'beard',    name: 'Оформление бороды', price: 1500, duration: 20 },
@@ -265,13 +250,10 @@ const services = [
   { id: 'kids',     name: 'Детская стрижка',   price: 2000, duration: 30 },
 ];
 
-// Здесь будем хранить все записи (пока — просто в памяти)
 let bookings = [];
 
-// Какая услуга выбрана сейчас (id из массива services)
 let selectedServiceId = null;
 
-// --- 2. Рисуем карточки услуг на странице ---
 function renderServices() {
   const container = document.getElementById('services');
   container.innerHTML = ''; // очищаем перед перерисовкой
@@ -301,7 +283,6 @@ function renderServices() {
   });
 }
 
-// --- 3. Заполняем выпадающий список времени (с 10:00 до 20:00 каждые 30 мин) ---
 function fillTimeOptions() {
   const select = document.getElementById('time');
   for (let hour = 10; hour < 20; hour++) {
@@ -315,7 +296,6 @@ function fillTimeOptions() {
   }
 }
 
-// --- 4. Отрисовка списка уже созданных записей ---
 function renderBookings() {
   const list = document.getElementById('bookingsList');
 
@@ -338,7 +318,6 @@ function renderBookings() {
       </div>
     `;
 
-    // Кнопка отмены записи
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Отменить';
     cancelBtn.addEventListener('click', () => {
@@ -351,19 +330,16 @@ function renderBookings() {
   });
 }
 
-// --- 5. Показ сообщения об успехе/ошибке под формой ---
 function showMessage(text, type) {
   const box = document.getElementById('formMessage');
   box.innerHTML = `<div class="msg ${type}">${text}</div>`;
   setTimeout(() => { box.innerHTML = ''; }, 4000);
 }
 
-// --- 6. Проверка: не занято ли уже это время в эту дату ---
 function isSlotTaken(date, time) {
   return bookings.some(b => b.date === date && b.time === time);
 }
 
-// --- 7. Обработка отправки формы ---
 document.getElementById('bookingForm').addEventListener('submit', function (e) {
   e.preventDefault(); // не даём странице перезагрузиться (стандартное поведение формы)
 
@@ -372,13 +348,11 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
   const date  = document.getElementById('date').value;
   const time  = document.getElementById('time').value;
 
-  // Проверка: выбрана ли услуга
   if (!selectedServiceId) {
     showMessage('Сначала выберите услугу выше.', 'error');
     return;
   }
 
-  // Проверка: не занят ли слот
   if (isSlotTaken(date, time)) {
     showMessage('Это время уже занято, выберите другое.', 'error');
     return;

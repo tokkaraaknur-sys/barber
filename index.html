@@ -242,6 +242,7 @@
 </main>
 
 <script>
+const API_URL = 'http://localhost:3000';
 
 const services = [
   { id: 'haircut',  name: 'Стрижка',           price: 3000, duration: 40 },
@@ -250,20 +251,17 @@ const services = [
   { id: 'kids',     name: 'Детская стрижка',   price: 2000, duration: 30 },
 ];
 
-let bookings = [];
-
 let selectedServiceId = null;
 
+// --- Рисуем карточки услуг (без изменений) ---
 function renderServices() {
   const container = document.getElementById('services');
-  container.innerHTML = ''; // очищаем перед перерисовкой
+  container.innerHTML = '';
 
   services.forEach(service => {
     const card = document.createElement('div');
     card.className = 'service-card';
-    if (service.id === selectedServiceId) {
-      card.classList.add('selected');
-    }
+    if (service.id === selectedServiceId) card.classList.add('selected');
 
     card.innerHTML = `
       <h3>${service.name}</h3>
@@ -273,7 +271,6 @@ function renderServices() {
       </div>
     `;
 
-    // При клике запоминаем, какая услуга выбрана, и перерисовываем
     card.addEventListener('click', () => {
       selectedServiceId = service.id;
       renderServices();
@@ -296,38 +293,58 @@ function fillTimeOptions() {
   }
 }
 
-function renderBookings() {
+// --- ГЛАВНОЕ ИЗМЕНЕНИЕ: получаем записи с сервера, а не из массива ---
+// async — говорим, что внутри этой функции будем чего-то ждать
+async function loadBookings() {
   const list = document.getElementById('bookingsList');
 
-  if (bookings.length === 0) {
-    list.innerHTML = '<p class="empty">Пока нет ни одной записи.</p>';
-    return;
-  }
+  try {
+    // fetch — встроенная в браузер функция похода в интернет
+    // await — "подожди здесь, пока не придёт ответ"
+    const response = await fetch(`${API_URL}/bookings`);
+    const bookings = await response.json(); // превращаем ответ в обычный JS-массив
 
-  list.innerHTML = '';
-  bookings.forEach((booking, index) => {
-    const item = document.createElement('div');
-    item.className = 'booking-item';
-    item.innerHTML = `
-      <div>
-        <span class="tag">${booking.serviceName}</span>
-        — ${booking.name}, ${booking.phone}<br>
-        <span style="color: var(--text-dim); font-size:13px;">
-          ${booking.date} в ${booking.time}
-        </span>
-      </div>
-    `;
+    if (bookings.length === 0) {
+      list.innerHTML = '<p class="empty">Пока нет ни одной записи.</p>';
+      return;
+    }
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.textContent = 'Отменить';
-    cancelBtn.addEventListener('click', () => {
-      bookings.splice(index, 1); // удаляем запись из массива
-      renderBookings();
+    list.innerHTML = '';
+    bookings.forEach((booking) => {
+      const item = document.createElement('div');
+      item.className = 'booking-item';
+      item.innerHTML = `
+        <div>
+          <span class="tag">${booking.service || 'Услуга'}</span>
+          — ${booking.name}, ${booking.phone}<br>
+          <span style="color: var(--text-dim); font-size:13px;">
+            ${booking.date} в ${booking.time}
+          </span>
+        </div>
+      `;
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Отменить';
+      cancelBtn.addEventListener('click', () => cancelBooking(booking.id));
+
+      item.appendChild(cancelBtn);
+      list.appendChild(item);
     });
+  } catch (err) {
+    // Если сервер не запущен или недоступен — сообщаем об этом понятно
+    list.innerHTML = '<p class="empty">Не удалось загрузить записи. Проверь, запущен ли сервер.</p>';
+    console.error(err);
+  }
+}
 
-    item.appendChild(cancelBtn);
-    list.appendChild(item);
-  });
+// --- Отмена записи через сервер ---
+async function cancelBooking(id) {
+  try {
+    await fetch(`${API_URL}/bookings/${id}`, { method: 'DELETE' });
+    loadBookings(); // перерисовываем список после удаления
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 function showMessage(text, type) {
@@ -336,12 +353,9 @@ function showMessage(text, type) {
   setTimeout(() => { box.innerHTML = ''; }, 4000);
 }
 
-function isSlotTaken(date, time) {
-  return bookings.some(b => b.date === date && b.time === time);
-}
-
-document.getElementById('bookingForm').addEventListener('submit', function (e) {
-  e.preventDefault(); // не даём странице перезагрузиться (стандартное поведение формы)
+// --- Отправка формы: теперь настоящий POST-запрос на сервер ---
+document.getElementById('bookingForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
 
   const name  = document.getElementById('name').value.trim();
   const phone = document.getElementById('phone').value.trim();
@@ -353,39 +367,44 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
     return;
   }
 
-  if (isSlotTaken(date, time)) {
-    showMessage('Это время уже занято, выберите другое.', 'error');
-    return;
-  }
-
   const service = services.find(s => s.id === selectedServiceId);
 
-  // Добавляем новую запись в массив
-  bookings.push({
-    serviceName: service.name,
-    name,
-    phone,
-    date,
-    time
-  });
+  try {
+    const response = await fetch(`${API_URL}/bookings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name, phone, date, time,
+        service: service.name
+      })
+    });
 
-  showMessage(`Готово! Вы записаны на ${service.name.toLowerCase()} ${date} в ${time}.`, 'ok');
+    const result = await response.json();
 
-  // Сбрасываем форму и выбор услуги
-  this.reset();
-  selectedServiceId = null;
-  renderServices();
-  renderBookings();
+    if (!response.ok) {
+      // Сервер вернул ошибку (например "время занято")
+      showMessage(result.error || 'Не удалось записаться', 'error');
+      return;
+    }
+
+    showMessage(`Готово! Вы записаны на ${service.name.toLowerCase()} ${date} в ${time}.`, 'ok');
+
+    this.reset();
+    selectedServiceId = null;
+    renderServices();
+    loadBookings(); // обновляем список с сервера
+  } catch (err) {
+    showMessage('Сервер недоступен. Проверь, запущен ли он.', 'error');
+    console.error(err);
+  }
 });
 
-// --- 8. Запускаем всё при загрузке страницы ---
+// --- Запуск при загрузке страницы ---
 renderServices();
 fillTimeOptions();
-renderBookings();
+loadBookings(); // теперь тянем записи с сервера при открытии сайта
 
-// Не даём выбрать прошедшую дату
 document.getElementById('date').min = new Date().toISOString().split('T')[0];
-
 </script>
 
 </body>

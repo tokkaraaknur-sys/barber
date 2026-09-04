@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Панель управления — ГРАНЬ</title>
+
+<style>
+  :root{
+    --bg: #171512;
+    --bg-card: #211e1a;
+    --accent: #c99a4a;
+    --text: #f3ede2;
+    --text-dim: #a89f8f;
+    --line: #35312b;
+    --green: #4caf6d;
+    --red: #d86a5a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body{
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+    line-height: 1.5;
+    padding: 20px;
+  }
+
+  header{
+    max-width: 900px;
+    margin: 0 auto 30px;
+    text-align: center;
+  }
+
+  header h1{
+    font-family: Georgia, serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+    margin: 0 0 4px;
+  }
+
+  header p{
+    color: var(--text-dim);
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  main{ max-width: 900px; margin: 0 auto; }
+
+  /* --- Экран входа --- */
+  #loginScreen{
+    max-width: 340px;
+    margin: 80px auto;
+    text-align: center;
+  }
+
+  #loginScreen input{
+    width: 100%;
+    padding: 12px;
+    margin: 16px 0;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 15px;
+  }
+
+  #loginScreen button{
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    border: none;
+    border-radius: 4px;
+    color: #171512;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 15px;
+  }
+
+  /* --- Панель --- */
+  .toolbar{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .toolbar select{
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--text);
+  }
+
+  .stat{
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  .day-group{ margin-bottom: 28px; }
+
+  .day-title{
+    font-family: Georgia, serif;
+    font-size: 17px;
+    color: var(--accent);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  .booking-card{
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .booking-info .time{
+    color: var(--accent);
+    font-weight: bold;
+    font-size: 16px;
+    margin-right: 10px;
+  }
+
+  .booking-info .service{
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .booking-info .client{
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  .status-badge{
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 8px;
+  }
+
+  .status-pending{ background: #4a3f1e; color: #e0c078; }
+  .status-confirmed{ background: #1e3a2a; color: var(--green); }
+  .status-cancelled{ background: #3a1e1e; color: var(--red); }
+
+  .actions{ display: flex; gap: 6px; }
+
+  .actions button{
+    padding: 7px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .btn-confirm:hover{ border-color: var(--green); color: var(--green); }
+  .btn-cancel:hover{ border-color: var(--red); color: var(--red); }
+  .btn-delete:hover{ border-color: var(--text-dim); }
+
+  .empty{
+    text-align: center;
+    color: var(--text-dim);
+    padding: 60px 0;
+  }
+</style>
+</head>
+<body>
+
+
+<div id="loginScreen">
+  <h1 style="font-family: Georgia, serif;">Вход для владельца</h1>
+  <input type="password" id="passwordInput" placeholder="Пароль">
+  <button onclick="checkPassword()">Войти</button>
+</div>
+
+<div id="adminPanel" style="display:none;">
+  <header>
+    <h1>ГРАНЬ — Панель управления</h1>
+    <p>ВСЕ ЗАПИСИ КЛИЕНТОВ</p>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <div class="stat" id="statsLine">Загрузка...</div>
+      <select id="filterStatus">
+        <option value="all">Все статусы</option>
+        <option value="pending">Ожидают подтверждения</option>
+        <option value="confirmed">Подтверждённые</option>
+        <option value="cancelled">Отменённые</option>
+      </select>
+    </div>
+
+    <div id="bookingsContainer"></div>
+  </main>
+</div>
+
+<script>
+
+const API_URL = 'https://barbershop-backend-g562.onrender.com';
+
+
+const ADMIN_PASSWORD = 'Aknur++';
+
+let allBookings = [];
+
+function checkPassword() {
+  const input = document.getElementById('passwordInput').value;
+  if (input === ADMIN_PASSWORD) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    sessionStorage.setItem('admin_ok', 'true'); // помним вход до закрытия вкладки
+    loadBookings();
+  } else {
+    alert('Неверный пароль');
+  }
+}
+
+
+if (sessionStorage.getItem('admin_ok') === 'true') {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'block';
+  loadBookings();
+}
+
+async function loadBookings() {
+  const container = document.getElementById('bookingsContainer');
+  try {
+    const response = await fetch(`${API_URL}/bookings`);
+    allBookings = await response.json();
+    renderBookings();
+  } catch (err) {
+    container.innerHTML = '<p class="empty">Не удалось загрузить записи. Проверь сервер.</p>';
+  }
+}
+
+function renderBookings() {
+  const container = document.getElementById('bookingsContainer');
+  const filter = document.getElementById('filterStatus').value;
+
+  const filtered = filter === 'all'
+    ? allBookings
+    : allBookings.filter(b => (b.status || 'pending') === filter);
+
+  document.getElementById('statsLine').textContent =
+    `Всего записей: ${allBookings.length} · Показано: ${filtered.length}`;
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<p class="empty">Записей не найдено.</p>';
+    return;
+  }
+
+  // Группируем записи по дате
+  const groups = {};
+  filtered.forEach(b => {
+    if (!groups[b.date]) groups[b.date] = [];
+    groups[b.date].push(b);
+  });
+
+  container.innerHTML = '';
+  Object.keys(groups).sort().forEach(date => {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'day-group';
+
+    const dateObj = new Date(date);
+    const formattedDate = dateObj.toLocaleDateString('ru-RU', {
+      day: 'numeric', month: 'long', weekday: 'long'
+    });
+
+    groupDiv.innerHTML = `<div class="day-title">${formattedDate}</div>`;
+
+    groups[date]
+      .sort((a, b) => a.time.localeCompare(b.time))
+      .forEach(booking => {
+        const status = booking.status || 'pending';
+        const statusLabels = {
+          pending: 'Ожидает', confirmed: 'Подтверждено', cancelled: 'Отменено'
+        };
+
+        const card = document.createElement('div');
+        card.className = 'booking-card';
+        card.innerHTML = `
+          <div class="booking-info">
+            <span class="time">${booking.time}</span>
+            <span class="service">${booking.service || 'Услуга не указана'}</span>
+            <span class="status-badge status-${status}">${statusLabels[status]}</span>
+            <div class="client">${booking.name} · ${booking.phone}</div>
+          </div>
+          <div class="actions">
+            <button class="btn-confirm" onclick="updateStatus(${booking.id}, 'confirmed')">Подтвердить</button>
+            <button class="btn-cancel" onclick="updateStatus(${booking.id}, 'cancelled')">Отменить</button>
+            <button class="btn-delete" onclick="deleteBooking(${booking.id})">Удалить</button>
+          </div>
+        `;
+        groupDiv.appendChild(card);
+      });
+
+    container.appendChild(groupDiv);
+  });
+}
+
+async function updateStatus(id, status) {
+  try {
+    await fetch(`${API_URL}/bookings/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    loadBookings();
+  } catch (err) {
+    alert('Не удалось обновить статус');
+  }
+}
+
+async function deleteBooking(id) {
+  if (!confirm('Точно удалить эту запись насовсем?')) return;
+  try {
+    await fetch(`${API_URL}/bookings/${id}`, { method: 'DELETE' });
+    loadBookings();
+  } catch (err) {
+    alert('Не удалось удалить запись');
+  }
+}
+
+document.getElementById('filterStatus').addEventListener('change', renderBookings);
+</script>
+</body>
+</html>

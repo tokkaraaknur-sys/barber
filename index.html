@@ -237,6 +237,7 @@
 </main>
 
 <script>
+
 const API_URL = 'https://barbershop-backend-g562.onrender.com';
 
 const services = [
@@ -248,7 +249,6 @@ const services = [
 
 let selectedServiceId = null;
 
-// --- Рисуем карточки услуг (без изменений) ---
 function renderServices() {
   const container = document.getElementById('services');
   container.innerHTML = '';
@@ -288,67 +288,12 @@ function fillTimeOptions() {
   }
 }
 
-// --- ГЛАВНОЕ ИЗМЕНЕНИЕ: получаем записи с сервера, а не из массива ---
-// async — говорим, что внутри этой функции будем чего-то ждать
-async function loadBookings() {
-  const list = document.getElementById('bookingsList');
-
-  try {
-    // fetch — встроенная в браузер функция похода в интернет
-    // await — "подожди здесь, пока не придёт ответ"
-    const response = await fetch(`${API_URL}/bookings`);
-    const bookings = await response.json(); // превращаем ответ в обычный JS-массив
-
-    if (bookings.length === 0) {
-      list.innerHTML = '<p class="empty">Пока нет ни одной записи.</p>';
-      return;
-    }
-
-    list.innerHTML = '';
-    bookings.forEach((booking) => {
-      const item = document.createElement('div');
-      item.className = 'booking-item';
-      item.innerHTML = `
-        <div>
-          <span class="tag">${booking.service || 'Услуга'}</span>
-          — ${booking.name}, ${booking.phone}<br>
-          <span style="color: var(--text-dim); font-size:13px;">
-            ${booking.date} в ${booking.time}
-          </span>
-        </div>
-      `;
-
-      const cancelBtn = document.createElement('button');
-      cancelBtn.textContent = 'Отменить';
-      cancelBtn.addEventListener('click', () => cancelBooking(booking.id));
-
-      item.appendChild(cancelBtn);
-      list.appendChild(item);
-    });
-  } catch (err) {
-    // Если сервер не запущен или недоступен — сообщаем об этом понятно
-    list.innerHTML = '<p class="empty">Не удалось загрузить записи. Проверь, запущен ли сервер.</p>';
-    console.error(err);
-  }
-}
-
-// --- Отмена записи через сервер ---
-async function cancelBooking(id) {
-  try {
-    await fetch(`${API_URL}/bookings/${id}`, { method: 'DELETE' });
-    loadBookings(); // перерисовываем список после удаления
-  } catch (err) {
-    console.error(err);
-  }
-}
-
 function showMessage(text, type) {
   const box = document.getElementById('formMessage');
   box.innerHTML = `<div class="msg ${type}">${text}</div>`;
-  setTimeout(() => { box.innerHTML = ''; }, 4000);
+  setTimeout(() => { box.innerHTML = ''; }, 5000);
 }
 
-// --- Отправка формы: теперь настоящий POST-запрос на сервер ---
 document.getElementById('bookingForm').addEventListener('submit', async function (e) {
   e.preventDefault();
 
@@ -363,42 +308,39 @@ document.getElementById('bookingForm').addEventListener('submit', async function
   }
 
   const service = services.find(s => s.id === selectedServiceId);
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Отправляем...';
 
   try {
     const response = await fetch(`${API_URL}/bookings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name, phone, date, time,
-        service: service.name
-      })
+      body: JSON.stringify({ name, phone, date, time, service: service.name })
     });
 
     const result = await response.json();
 
     if (!response.ok) {
-      // Сервер вернул ошибку (например "время занято")
       showMessage(result.error || 'Не удалось записаться', 'error');
       return;
     }
 
-    showMessage(`Готово! Вы записаны на ${service.name.toLowerCase()} ${date} в ${time}.`, 'ok');
+    showMessage(`Готово! Вы записаны на ${service.name.toLowerCase()} ${date} в ${time}. Мы свяжемся с вами для подтверждения.`, 'ok');
 
     this.reset();
     selectedServiceId = null;
     renderServices();
-    loadBookings(); // обновляем список с сервера
   } catch (err) {
-    showMessage('Сервер недоступен. Проверь, запущен ли он.', 'error');
-    console.error(err);
+    showMessage('Сервер сейчас недоступен, попробуйте чуть позже.', 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Записаться';
   }
 });
 
-// --- Запуск при загрузке страницы ---
 renderServices();
 fillTimeOptions();
-loadBookings(); // теперь тянем записи с сервера при открытии сайта
-
 document.getElementById('date').min = new Date().toISOString().split('T')[0];
 </script>
 
